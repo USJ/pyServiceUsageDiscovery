@@ -109,6 +109,6 @@ dst = 'dst host ' + local_ip
 signal.signal(signal.SIGINT, signal_handler)
 #signal.pause()
 
-p = sub.Popen(('sudo', 'tcpdump', '-nq', dst), stdout=sub.PIPE)
+p = sub.Popen(('sudo', 'tcpdump', '-nqnn', dst), stdout=sub.PIPE)
 for row in iter(p.stdout.readline, b''):
     process_tcpdump_line(row.rstrip())   # process here
