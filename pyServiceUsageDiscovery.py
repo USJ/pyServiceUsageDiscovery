@@ -5,7 +5,8 @@
 To run this script, just execute it using your python interpreter.
 You will be asked to input your sudo password.
 Leave the script running for a while (a few days), ideally in its own `screen`.
-Press Ctrl-C to interrupt the script and read its output.
+Press Ctrl-Z to output the current output without stopping the script.
+Press Ctrl-C to abort the script and read its output.
 
 
 This program is free software: you can redistribute it and/or modify it under
@@ -22,6 +23,7 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 __author__     = "Daniel Filipe Farinha"
 __copyright__  = "Copyright 2019, University of Saint Joseph"
 __license__    = "GPLv3"
+__version__    = "1.0.1"
 
 import subprocess as sub
 import socket
@@ -41,9 +43,13 @@ packets_processed = 0
 print('This script requires running tcpdump as root, so you will be asked for your password for sudo.')
 
 def signal_handler(sig, frame):
-        print('Script terminating. Preparing output:')
+        print('\nInterrupt detected. Output:')
         pprint.pprint(clients_logged, width=1)
-        sys.exit(0)
+
+        if(sig is signal.SIGINT):
+          print('Terminated.')
+          sys.exit(0)
+
 
 def process_proc_net_tcp_line(line):
     pattern = re.compile(r""".*: .*:(?P<port>.*?) .*:.* 0A.*""")
@@ -71,23 +77,24 @@ def process_tcpdump_line(line):
     match = pattern.match(line)
 
     if match:
-          packets_processed += 1
-          sys.stdout.write("Packets processed: %d  Press Ctrl+C to terminate and display output.\r" % (packets_processed) )
-          sys.stdout.flush()
-
           src = str(match.group("src")).strip()
           dst = str(match.group("dst")).strip()
 
-          (src_ip, src_port) = process_host_port(src)
-          (dst_ip, dst_port) = process_host_port(dst)
+          (src_ip, src_port) = process_host_port(src) or (None, None)
+          (dst_ip, dst_port) = process_host_port(dst) or (None, None)
 
-          if dst_port in open_ports:
-               key = src_ip + " -> " + dst_port
+          if src_ip is not None and dst_port is not None:
+               packets_processed += 1
+               sys.stdout.write("Packets processed: %d  Press Ctrl+C to terminate and display output.\r" % (packets_processed) )
+               sys.stdout.flush()
 
-               if key in clients_logged:
-                    clients_logged[key] += 1
-               else:
-                    clients_logged[key] = 1
+               if dst_port in open_ports:
+                    key = src_ip + " -> " + dst_port
+
+                    if key in clients_logged:
+                         clients_logged[key] += 1
+                    else:
+                         clients_logged[key] = 1
 
 
 # get host ip address
@@ -107,6 +114,10 @@ print("Open ports: " + str(open_ports))
 dst = 'dst host ' + local_ip
 
 signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTSTP, signal_handler)
+
+
+
 #signal.pause()
 
 p = sub.Popen(('sudo', 'tcpdump', '-nqnn', dst), stdout=sub.PIPE)
