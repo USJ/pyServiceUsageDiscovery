@@ -120,6 +120,8 @@ signal.signal(signal.SIGTSTP, signal_handler)
 
 #signal.pause()
 
-p = sub.Popen(('sudo', 'tcpdump', '-nqnn', dst), stdout=sub.PIPE)
+p = sub.Popen(('sudo', 'tcpdump', '-nqnn', dst), stdout=sub.PIPE,
+              preexec_fn = lambda: signal.signal(signal.SIGTSTP, signal.SIG_IGN))
+              
 for row in iter(p.stdout.readline, b''):
     process_tcpdump_line(row.rstrip())   # process here
