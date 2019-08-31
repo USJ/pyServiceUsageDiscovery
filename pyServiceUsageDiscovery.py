@@ -124,7 +124,7 @@ signal.signal(signal.SIGTSTP, signal_handler)
 
 # prepare tcpdump command
 dst = 'dst host ' + local_ip
-p = sub.Popen(('sudo', 'tcpdump', '-nqnn', '-l', dst), stdout=sub.PIPE,
+p = sub.Popen(('sudo', 'tcpdump', '-nqnn', '-l', '-i', 'any', dst), stdout=sub.PIPE,
             preexec_fn = lambda: signal.signal(signal.SIGTSTP, signal.SIG_IGN))
 
 for row in iter(p.stdout.readline, b''):
