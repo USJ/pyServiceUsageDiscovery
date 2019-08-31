@@ -23,7 +23,7 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 __author__     = "Daniel Filipe Farinha"
 __copyright__  = "Copyright 2019, University of Saint Joseph"
 __license__    = "GPLv3"
-__version__    = "1.0.1"
+__version__    = "1.0.2"
 
 import subprocess as sub
 import socket
@@ -33,7 +33,9 @@ import re
 import socket
 import signal
 import sys
+import operator
 import pprint
+import time
 
 open_ports = []
 clients_logged = {}
@@ -43,13 +45,16 @@ packets_processed = 0
 print('This script requires running tcpdump as root, so you will be asked for your password for sudo.')
 
 def signal_handler(sig, frame):
-        print('\nInterrupt detected. Output:')
-        pprint.pprint(clients_logged, width=1)
+     print('\nInterrupt detected. Output:')
 
-        if(sig is signal.SIGINT):
+     sorted_hosts = sorted(clients_logged.items(), reverse=True, key=lambda kv: kv[1])
+
+     pprint.pprint(sorted_hosts)
+
+     if(sig is signal.SIGINT):
           print('Terminated.')
           sys.exit(0)
-
+     
 
 def process_proc_net_tcp_line(line):
     pattern = re.compile(r""".*: .*:(?P<port>.*?) .*:.* 0A.*""")
@@ -108,20 +113,19 @@ p = sub.Popen(('cat', '/proc/net/tcp'), stdout=sub.PIPE)
 for row in iter(p.stdout.readline, b''):
      process_proc_net_tcp_line(row.rstrip())
 
+# print IP and ports
 print("IP: " + local_ip)
 print("Open ports: " + str(open_ports))
 
-dst = 'dst host ' + local_ip
-
+# register interrupt handlers
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTSTP, signal_handler)
 
 
+# prepare tcpdump command
+dst = 'dst host ' + local_ip
+p = sub.Popen(('sudo', 'tcpdump', '-nqnn', '-l', dst), stdout=sub.PIPE,
+            preexec_fn = lambda: signal.signal(signal.SIGTSTP, signal.SIG_IGN))
 
-#signal.pause()
-
-p = sub.Popen(('sudo', 'tcpdump', '-nqnn', dst), stdout=sub.PIPE,
-              preexec_fn = lambda: signal.signal(signal.SIGTSTP, signal.SIG_IGN))
-              
 for row in iter(p.stdout.readline, b''):
-    process_tcpdump_line(row.rstrip())   # process here
+     process_tcpdump_line(row.rstrip())
